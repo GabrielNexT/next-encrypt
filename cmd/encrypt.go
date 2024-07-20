@@ -1,10 +1,7 @@
 package cmd
 
 import (
-	"log"
-	"os"
-
-	password "github.com/GabrielNexT/next-encrypt/internal"
+	"github.com/GabrielNexT/next-encrypt/internal"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/chacha20"
 )
@@ -12,44 +9,30 @@ import (
 // encryptCmd represents the encrypt command
 var encryptCmd = &cobra.Command{
 	Use:   "encrypt",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Encrypt or decrypt a file using a password",
+	Long: `Encrypt or decrypt a file using a password.
+	encrypt --file LICENSE
+	encrypt --file LICENSE --file README.md
+	encrypt --file "LICENSE,README.md"
+	encrypt --file "LICENSE.nc,README.md.nc"
+	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runCommand(cmd, args)
 	},
 }
 
 func runCommand(cmd *cobra.Command, args []string) {
-	filePath, _ := cmd.Flags().GetString("file")
+	filePaths, _ := cmd.Flags().GetStringSlice("file")
 
-	src, err := os.ReadFile(filePath)
-
-	if err != nil {
-		log.Fatal(err.Error())
+	if len(filePaths) == 0 {
+		return
 	}
 
-	key, nonce := password.GetKeyAndNonceFromPassword()
+	key, nonce := internal.GetKeyAndNonceFromPassword()
 
 	cipher, _ := chacha20.NewUnauthenticatedCipher(key, nonce)
 
-	dst := make([]byte, len(src))
-
-	cipher.XORKeyStream(dst, src)
-
-	f, err := os.Create(filePath + ".nc")
-
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	defer f.Close()
-
-	f.Write(dst)
+	internal.EncryptManyFiles(filePaths, cipher)
 }
 
 func init() {
@@ -63,5 +46,6 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	encryptCmd.Flags().String("file", "", "File for encrypt")
+	encryptCmd.Flags().StringSlice("file", []string{}, "File for encrypt")
+	encryptCmd.MarkFlagRequired("file")
 }
